@@ -2867,32 +2867,37 @@ cmd_ping (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 }
 
 void
-open_query (server *serv, char *nick, gboolean focus_existing)
+open_query (server *serv, char *nick, char *text, gboolean focus_existing)
 {
 	session *sess;
 
 	sess = find_dialog (serv, nick);
 	if (!sess)
-		new_ircwindow (serv, nick, SESS_DIALOG, 1);
+		sess = new_ircwindow (serv, nick, SESS_DIALOG, 1);
 	else if (focus_existing)
 		fe_ctrl_gui (sess, 2, 0);	/* bring-to-front */
+
+	if (*text)
+		handle_say (sess, text, FALSE);
 }
 
 static int
 cmd_query (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 {
 	char *nick = word[2];
+	char *text = word_eol[3];
 	gboolean focus = TRUE;
 
 	if (strcmp (word[2], "-nofocus") == 0)
 	{
 		nick = word[3];
+		text = word_eol[4];
 		focus = FALSE;
 	}
 
 	if (*nick && !is_channel (sess->server, nick))
 	{
-		open_query (sess->server, nick, focus);
+		open_query (sess->server, nick, text, focus);
 		return TRUE;
 	}
 	return FALSE;
@@ -3719,7 +3724,7 @@ const struct commands xc_cmds[] = {
 	{"PING", cmd_ping, 1, 0, 1,
 	 N_("PING <nick | channel>, CTCP pings nick or channel")},
 	{"QUERY", cmd_query, 0, 0, 1,
-	 N_("QUERY [-nofocus] <nick>, opens up a new privmsg window to someone")},
+	 N_("QUERY [-nofocus] <nick> [<message>], opens up a new privmsg window to someone")},
 	{"QUIT", cmd_quit, 0, 0, 1,
 	 N_("QUIT [<reason>], disconnects from the current server")},
 	{"QUOTE", cmd_quote, 1, 0, 1,

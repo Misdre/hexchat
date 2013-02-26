@@ -802,7 +802,7 @@ static void
 dcc_open_query (server *serv, char *nick)
 {
 	if (prefs.hex_gui_autoopen_dialog)
-		open_query (serv, nick, FALSE);
+		open_query (serv, nick, NULL, FALSE);
 }
 
 static gboolean
