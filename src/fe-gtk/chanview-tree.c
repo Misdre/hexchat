@@ -1,3 +1,22 @@
+/* HexChat
+ * Copyright (C) 1998-2010 Peter Zelezny.
+ * Copyright (C) 2009-2013 Berke Viktor.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
 /* file included in chanview.c */
 
 typedef struct
@@ -12,7 +31,6 @@ typedef struct
 #include "maingui.h"
 
 #include <gdk/gdk.h>
-#include <gtk/gtktreeview.h>
 
 static void 	/* row-activated, when a row is double clicked */
 cv_tree_activated_cb (GtkTreeView *view, GtkTreePath *path,
@@ -75,6 +93,8 @@ cv_tree_init (chanview *cv)
 {
 	GtkWidget *view, *win;
 	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *col;
+	int wid1, wid2;
 	static const GtkTargetEntry dnd_src_target[] =
 	{
 		{"HEXCHAT_CHANVIEW", GTK_TARGET_SAME_APP, 75 }
@@ -105,8 +125,17 @@ cv_tree_init (chanview *cv)
 	{
 		gtk_tree_view_set_enable_tree_lines (GTK_TREE_VIEW (view), TRUE);
 	}
+	
+	/* Indented channels with no server looks silly, but we still want expanders */
+	if (!prefs.hex_gui_tab_server)
+	{
+		gtk_widget_style_get (view, "expander-size", &wid1, "horizontal-separator", &wid2, NULL);
+		gtk_tree_view_set_level_indentation (GTK_TREE_VIEW (view), -wid1 - wid2);
+	}
+
 
 	gtk_container_add (GTK_CONTAINER (win), view);
+	col = gtk_tree_view_column_new();
 
 	/* icon column */
 	if (cv->use_icons)
@@ -114,9 +143,9 @@ cv_tree_init (chanview *cv)
 		renderer = gtk_cell_renderer_pixbuf_new ();
 		if (prefs.hex_gui_compact)
 			g_object_set (G_OBJECT (renderer), "ypad", 0, NULL);
-		gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),
-																	-1, NULL, renderer,
-																	"pixbuf", COL_PIXBUF, NULL);
+
+		gtk_tree_view_column_pack_start(col, renderer, FALSE);
+		gtk_tree_view_column_set_attributes (col, renderer, "pixbuf", COL_PIXBUF, NULL);
 	}
 
 	/* main column */
@@ -124,9 +153,9 @@ cv_tree_init (chanview *cv)
 	if (prefs.hex_gui_compact)
 		g_object_set (G_OBJECT (renderer), "ypad", 0, NULL);
 	gtk_cell_renderer_text_set_fixed_height_from_font (GTK_CELL_RENDERER_TEXT (renderer), 1);
-	gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),
-																-1, NULL, renderer,
-									"text", COL_NAME, "attributes", COL_ATTR, NULL);
+	gtk_tree_view_column_pack_start(col, renderer, TRUE);
+	gtk_tree_view_column_set_attributes (col, renderer, "text", COL_NAME, "attributes", COL_ATTR, NULL);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(view), col);									
 
 	g_signal_connect (G_OBJECT (gtk_tree_view_get_selection (GTK_TREE_VIEW (view))),
 							"changed", G_CALLBACK (cv_tree_sel_cb), cv);

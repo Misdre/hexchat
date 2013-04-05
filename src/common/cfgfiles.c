@@ -450,7 +450,6 @@ const struct prefs vars[] =
 	{"gui_tab_icons", P_OFFINT (hex_gui_tab_icons), TYPE_BOOL},
 	{"gui_tab_layout", P_OFFINT (hex_gui_tab_layout), TYPE_INT},
 	{"gui_tab_newtofront", P_OFFINT (hex_gui_tab_newtofront), TYPE_INT},
-	{"gui_tab_notices", P_OFFINT (hex_gui_tab_notices), TYPE_BOOL},
 	{"gui_tab_pos", P_OFFINT (hex_gui_tab_pos), TYPE_INT},
 	{"gui_tab_server", P_OFFINT (hex_gui_tab_server), TYPE_BOOL},
 	{"gui_tab_small", P_OFFINT (hex_gui_tab_small), TYPE_INT},
@@ -466,6 +465,7 @@ const struct prefs vars[] =
 	{"gui_tray_minimize", P_OFFINT (hex_gui_tray_minimize), TYPE_BOOL},
 	{"gui_tray_quiet", P_OFFINT (hex_gui_tray_quiet), TYPE_BOOL},
 	{"gui_ulist_buttons", P_OFFINT (hex_gui_ulist_buttons), TYPE_BOOL},
+	{"gui_ulist_color", P_OFFINT (hex_gui_ulist_color), TYPE_BOOL},
 	{"gui_ulist_count", P_OFFINT (hex_gui_ulist_count), TYPE_BOOL},
 	{"gui_ulist_doubleclick", P_OFFSET (hex_gui_ulist_doubleclick), TYPE_STR},
 	{"gui_ulist_hide", P_OFFINT (hex_gui_ulist_hide), TYPE_BOOL},
@@ -523,6 +523,7 @@ const struct prefs vars[] =
 	{"irc_nick3", P_OFFSET (hex_irc_nick3), TYPE_STR},
 	{"irc_nick_hilight", P_OFFSET (hex_irc_nick_hilight), TYPE_STR},
 	{"irc_no_hilight", P_OFFSET (hex_irc_no_hilight), TYPE_STR},
+	{"irc_notice_pos", P_OFFINT (hex_irc_notice_pos), TYPE_INT},
 	{"irc_part_reason", P_OFFSET (hex_irc_part_reason), TYPE_STR},
 	{"irc_quit_reason", P_OFFSET (hex_irc_quit_reason), TYPE_STR},
 	{"irc_raw_modes", P_OFFINT (hex_irc_raw_modes), TYPE_BOOL},
@@ -681,7 +682,7 @@ load_config (void)
 	prefs.hex_input_flash_priv = 1;
 	prefs.hex_input_tray_hilight = 1;
 	prefs.hex_input_tray_priv = 1;
-	/* prefs.hex_irc_who_join = 1; prevent kicks and bans caused by overwhelming who'ing after reconnects */
+	prefs.hex_irc_who_join = 1; /* Can kick with inordinate amount of channels, required for some of our features though, TODO: add cap like away check? */
 	prefs.hex_irc_whois_front = 1;
 	prefs.hex_net_auto_reconnect = 1;
 	prefs.hex_net_throttle = 1;
@@ -826,15 +827,6 @@ load_config (void)
 
 	} else
 	{
-#ifndef WIN32
-#ifndef __EMX__
-		/* OS/2 uses UID 0 all the time */
-		if (getuid () == 0)
-			fe_message (_("* Running IRC as root is stupid! You should\n"
-							"  create a User Account and use that to login.\n"), FE_MSG_WARN|FE_MSG_WAIT);
-#endif
-#endif /* !WIN32 */
-
 		g_mkdir (prefs.hex_dcc_dir, 0700);
 		g_mkdir (prefs.hex_dcc_completed_dir, 0700);
 

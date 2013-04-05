@@ -42,12 +42,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <time.h>
-#include <gtk/gtkmain.h>
-#include <gtk/gtksignal.h>
-#include <gtk/gtkselection.h>
-#include <gtk/gtkclipboard.h>
-#include <gtk/gtkversion.h>
-#include <gtk/gtkwindow.h>
 
 #ifdef HEXCHAT
 #ifdef WIN32
@@ -90,15 +84,8 @@
 #endif
 
 /* is delimiter */
-#if 0
-/* () is used by Wikipedia */
 #define is_del(c) \
-	(c == ' ' || c == '\n' || c == ')' || c == '(' || \
-	 c == '>' || c == '<' || c == ATTR_RESET || c == ATTR_BOLD || c == 0)
-#endif
-#define is_del(c) \
-	(c == ' ' || c == '\n' || c == '>' || c == '<' || \
-	 c == ATTR_RESET || c == ATTR_BOLD || c == 0)
+	(c == ' ' || c == '\n' || c == '>' || c == '<' || c == 0)
 
 #ifdef SCROLL_HACK
 /* force scrolling off */

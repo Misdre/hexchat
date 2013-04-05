@@ -288,8 +288,8 @@ url_check_line (char *buf, int len)
 		int start, end;
 
 		g_match_info_fetch_pos(gmi, 0, &start, &end);
-		if (po[end - 1] == '\r')
-			po[--end] = 0;
+		while (end > start && (po[end - 1] == '\r' || po[end - 1] == '\n'))
+			end--;
 		if (g_strstr_len (po + start, end - start, "://"))
 			url_add(po + start, end - start);
 		g_match_info_next(gmi, NULL);
@@ -515,8 +515,8 @@ re_channel (void)
 
 /*	PATH description --- */
 #ifdef WIN32
-/* Windows path can be C: D: etc */
-#define PATH "^([a-z]:).*"
+/* Windows path can be .\ ..\ or C: D: etc */
+#define PATH "^(\\.{1,2}\\\\|[a-z]:).*"
 #else
 /* Linux path can be / or ./ or ../ etc */
 #define PATH "^(/|\\./|\\.\\./).*"

@@ -24,20 +24,6 @@
 
 #include "fe-gtk.h"
 
-#include <gtk/gtkhbox.h>
-#include <gtk/gtkstock.h>
-#include <gtk/gtkhbbox.h>
-#include <gtk/gtkscrolledwindow.h>
-
-#include <gtk/gtklabel.h>
-#include <gtk/gtkliststore.h>
-#include <gtk/gtkentry.h>
-#include <gtk/gtkmessagedialog.h>
-#include <gtk/gtktable.h>
-#include <gtk/gtktreeview.h>
-#include <gtk/gtktreeselection.h>
-#include <gtk/gtkcellrenderertext.h>
-
 #include "../common/hexchat.h"
 #include "../common/notify.h"
 #include "../common/cfgfiles.h"
@@ -413,6 +399,7 @@ notify_opengui (void)
 	notify_window =
 		mg_create_generic_tab ("Notify", _(DISPLAY_NAME": Friends List"), FALSE, TRUE,
 		                       notify_closegui, NULL, 400, 250, &vbox, 0);
+	gtkutil_destroy_on_esc (notify_window);
 
 	view = notify_treeview_new (vbox);
 	g_object_set_data (G_OBJECT (notify_window), "view", view);

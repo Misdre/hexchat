@@ -32,7 +32,7 @@
 #endif
 #include <sys/types.h>
 #include <ctype.h>
-#include <glib.h>
+#include <glib-object.h>
 #include "../common/hexchat.h"
 #include "../common/hexchatc.h"
 #include "../common/cfgfiles.h"
@@ -61,7 +61,7 @@ handle_line (GIOChannel *channel, GIOCondition cond, gpointer data)
 	GIOStatus result;
 
 	result = g_io_channel_read_line(channel, &str_return, &length, &terminator_pos, &error);
-	if (result == G_IO_STATUS_ERROR) {
+	if (result == G_IO_STATUS_ERROR || result == G_IO_STATUS_EOF) {
 		return FALSE;
 	}
 	else {
@@ -429,7 +429,14 @@ fe_input_add (int sok, int flags, void *func, void *data)
 	int tag, type = 0;
 	GIOChannel *channel;
 
+#ifdef G_OS_WIN32
+	if (flags & FIA_FD)
+		channel = g_io_channel_win32_new_fd (sok);
+	else
+		channel = g_io_channel_win32_new_socket (sok);
+#else
 	channel = g_io_channel_unix_new (sok);
+#endif
 
 	if (flags & FIA_READ)
 		type |= G_IO_IN | G_IO_HUP | G_IO_ERR;
@@ -478,7 +485,7 @@ fe_args (int argc, char *argv[])
 	context = g_option_context_new (NULL);
 	g_option_context_add_main_entries (context, gopt_entries, GETTEXT_PACKAGE);
 	g_option_context_parse (context, &argc, &argv, &error);
-
+	
 	if (error)
 	{
 		if (error->message)
@@ -527,6 +534,17 @@ fe_args (int argc, char *argv[])
 			xdir[strlen (xdir) - 1] = 0;
 		g_free (arg_cfgdir);
 	}
+
+	g_type_init ();
+	
+#ifndef WIN32
+#ifndef __EMX__
+		/* OS/2 uses UID 0 all the time */
+		if (getuid () == 0)
+			fe_message (_("* Running IRC as root is stupid! You should\n"
+							"  create a User Account and use that to login.\n"), FE_MSG_WARN|FE_MSG_WAIT);
+#endif
+#endif /* !WIN32 */
 
 	return -1;
 }
@@ -641,18 +659,15 @@ void
 fe_chan_list_end (struct server *serv)
 {
 }
-int
-fe_is_banwindow (struct session *sess)
+gboolean
+fe_add_ban_list (struct session *sess, char *mask, char *who, char *when, int rplcode)
 {
 	return 0;
 }
-void
-fe_add_ban_list (struct session *sess, char *mask, char *who, char *when, int is_exemption)
+gboolean
+fe_ban_list_end (struct session *sess, int rplcode)
 {
-}
-void
-fe_ban_list_end (struct session *sess, int is_exemption)
-{
+	return 0;
 }
 void
 fe_notify_update (char *name)

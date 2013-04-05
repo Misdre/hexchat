@@ -22,18 +22,6 @@
 
 #include "fe-gtk.h"
 
-#include <gtk/gtkentry.h>
-#include <gtk/gtkhbox.h>
-#include <gtk/gtkvbox.h>
-#include <gtk/gtklabel.h>
-#include <gtk/gtkstock.h>
-#include <gtk/gtkhbbox.h>
-#include <gtk/gtkhseparator.h>
-#include <gtk/gtkvseparator.h>
-#include <gtk/gtkradiobutton.h>
-#include <gtk/gtktogglebutton.h>
-#include <gdk/gdkkeysyms.h>
-
 #include "../common/hexchat.h"
 #include "../common/fe.h"
 #include "../common/util.h"
@@ -117,14 +105,6 @@ static void
 search_entry_cb (GtkWidget * entry, session * sess)
 {
 	search_search (sess, gtk_entry_get_text (GTK_ENTRY (entry)));
-}
-
-static gboolean 
-search_key_cb (GtkWidget * window, GdkEventKey * key, gpointer userdata)
-{
-	if (key->keyval == GDK_Escape)
-		gtk_widget_destroy (window);
-	return FALSE;
 }
 
 static void
@@ -238,7 +218,7 @@ search_open (session * sess)
 	add_tip (wid, "Close this box, reset highlighted search items, and stop searching new lines.");
 
 	/* Add recognition of the ESC key to close the box */
-	g_signal_connect (G_OBJECT (win), "key_press_event", G_CALLBACK (search_key_cb), win);
+	gtkutil_destroy_on_esc (win);
 
 	/* That's all, folks */
 	searchwin = win;

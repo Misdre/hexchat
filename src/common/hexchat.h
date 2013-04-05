@@ -1,3 +1,22 @@
+/* HexChat
+ * Copyright (C) 1998-2010 Peter Zelezny.
+ * Copyright (C) 2009-2013 Berke Viktor.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
 #ifdef WIN32
 #include "../../config-win32.h"
 #else
@@ -146,7 +165,6 @@ struct hexchatprefs
 	unsigned int hex_gui_tab_dialogs;
 	unsigned int hex_gui_tab_dots;
 	unsigned int hex_gui_tab_icons;
-	unsigned int hex_gui_tab_notices;
 	unsigned int hex_gui_tab_server;
 	unsigned int hex_gui_tab_sort;
 	unsigned int hex_gui_tab_utils;
@@ -158,6 +176,7 @@ struct hexchatprefs
 	unsigned int hex_gui_tray_minimize;
 	unsigned int hex_gui_tray_quiet;
 	unsigned int hex_gui_ulist_buttons;
+	unsigned int hex_gui_ulist_color;
 	unsigned int hex_gui_ulist_count;
 	unsigned int hex_gui_ulist_hide;
 	unsigned int hex_gui_ulist_icons;
@@ -276,6 +295,7 @@ struct hexchatprefs
 	int hex_input_balloon_time;
 	int hex_irc_ban_type;
 	int hex_irc_join_delay;
+	int hex_irc_notice_pos;
 	int hex_net_ping_timeout;
 	int hex_net_proxy_port;
 	int hex_net_proxy_type;				/* 0=disabled, 1=wingate 2=socks4, 3=socks5, 4=http */
@@ -567,14 +587,18 @@ typedef struct server
 	unsigned int reconnect_away:1;	/* whether to reconnect in is_away state */
 	unsigned int dont_use_proxy:1;	/* to proxy or not to proxy */
 	unsigned int supports_watch:1;	/* supports the WATCH command */
+	unsigned int supports_monitor:1;	/* supports the MONITOR command */
 	unsigned int bad_prefix:1;			/* gave us a bad PREFIX= 005 number */
 	unsigned int have_namesx:1;		/* 005 tokens NAMESX and UHNAMES */
+	unsigned int have_awaynotify:1;
 	unsigned int have_uhnames:1;
 	unsigned int have_whox:1;		/* have undernet's WHOX features */
-	unsigned int have_capab:1;		/* supports CAPAB (005 tells us) */
 	unsigned int have_idmsg:1;		/* freenode's IDENTIFY-MSG */
+	unsigned int have_accnotify:1; /* cap account-notify */
+	unsigned int have_extjoin:1;	/* cap extended-join */
 	unsigned int have_sasl:1;		/* SASL capability */
 	unsigned int have_except:1;	/* ban exemptions +e */
+	unsigned int have_invite:1;	/* invite exemptions +I */
 	unsigned int using_cp1255:1;	/* encoding is CP1255/WINDOWS-1255? */
 	unsigned int using_irc:1;		/* encoding is "IRC" (CP1252/UTF-8 hybrid)? */
 	unsigned int use_who:1;			/* whether to use WHO command to get dcc_ip */

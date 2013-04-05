@@ -2272,7 +2272,7 @@ cmd_ignore (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 		return TRUE;
 	}
 	if (!*word[3])
-		return FALSE;
+		word[3] = "ALL";
 
 	i = 3;
 	while (1)
@@ -2873,7 +2873,7 @@ open_query (server *serv, char *nick, char *text, gboolean focus_existing)
 
 	sess = find_dialog (serv, nick);
 	if (!sess)
-		sess = new_ircwindow (serv, nick, SESS_DIALOG, 1);
+		new_ircwindow (serv, nick, SESS_DIALOG, focus_existing);
 	else if (focus_existing)
 		fe_ctrl_gui (sess, 2, 0);	/* bring-to-front */
 
@@ -3071,7 +3071,7 @@ cmd_splay (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 }
 
 static int
-parse_irc_url (char *url, char *server_name[], char *port[], char *channel[], int *use_ssl)
+parse_irc_url (char *url, char *server_name[], char *port[], char *channel[], char *key[], int *use_ssl)
 {
 	char *co;
 #ifdef USE_OPENSSL
@@ -3107,8 +3107,17 @@ urlserv:
 				*channel = co+1;
 			else
 				*channel = co;
-			
+				
+			/* check for key - mirc style */
+			co = strchr (co + 1, '?');
+			if (co)
+			{
+				*co = 0;
+				co++;
+				*key = co;
+			}	
 		}
+
 		return TRUE;
 	}
 	return FALSE;
@@ -3122,6 +3131,7 @@ cmd_server (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 	char *port = NULL;
 	char *pass = NULL;
 	char *channel = NULL;
+	char *key = NULL;
 	int use_ssl = FALSE;
 	int is_url = TRUE;
 	server *serv = sess->server;
@@ -3135,7 +3145,7 @@ cmd_server (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 	}
 #endif
 
-	if (!parse_irc_url (word[2 + offset], &server_name, &port, &channel, &use_ssl))
+	if (!parse_irc_url (word[2 + offset], &server_name, &port, &channel, &key, &use_ssl))
 	{
 		is_url = FALSE;
 		server_name = word[2 + offset];
@@ -3161,6 +3171,8 @@ cmd_server (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 	{
 		sess->willjoinchannel[0] = '#';
 		safe_strcpy ((sess->willjoinchannel + 1), channel, (CHANLEN - 1));
+		if (key)
+			safe_strcpy (sess->channelkey, key, 64);
 	}
 
 	/* support +7000 style ports like mIRC */
@@ -3282,6 +3294,12 @@ cmd_unignore (struct session *sess, char *tbuf, char *word[],
 	char *arg = word[3];
 	if (*mask)
 	{
+		if (strchr (mask, '?') == NULL && strchr (mask, '*') == NULL)
+		{
+			mask = tbuf;
+			snprintf (tbuf, TBUFSIZE, "%s!*@*", word[2]);
+		}
+		
 		if (ignore_del (mask, NULL))
 		{
 			if (g_ascii_strcasecmp (arg, "QUIET"))
@@ -3361,15 +3379,18 @@ find_server_from_net (void *net)
 }
 
 static void
-url_join_only (server *serv, char *tbuf, char *channel)
+url_join_only (server *serv, char *tbuf, char *channel, char *key)
 {
-	/* already connected, JOIN only. FIXME: support keys? */
+	/* already connected, JOIN only. */
 	if (channel == NULL)
 		return;
 	tbuf[0] = '#';
 	/* tbuf is 4kb */
 	safe_strcpy ((tbuf + 1), channel, 256);
-	serv->p_join (serv, tbuf, "");
+	if (key)
+		serv->p_join (serv, tbuf, key);
+	else
+		serv->p_join (serv, tbuf, "");
 }
 
 static int
@@ -3380,12 +3401,13 @@ cmd_url (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 		char *server_name = NULL;
 		char *port = NULL;
 		char *channel = NULL;
+		char *key = NULL;
 		char *url = g_strdup (word[2]);
 		int use_ssl = FALSE;
 		void *net;
 		server *serv;
 
-		if (parse_irc_url (url, &server_name, &port, &channel, &use_ssl))
+		if (parse_irc_url (url, &server_name, &port, &channel, &key, &use_ssl))
 		{
 			/* maybe we're already connected to this net */
 
@@ -3401,7 +3423,7 @@ cmd_url (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 				serv = find_server_from_net (net);
 				if (serv)
 				{
-					url_join_only (serv, tbuf, channel);
+					url_join_only (serv, tbuf, channel, key);
 					g_free (url);
 					return TRUE;
 				}
@@ -3412,7 +3434,7 @@ cmd_url (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 				serv = find_server_from_hostname (server_name);
 				if (serv)
 				{
-					url_join_only (serv, tbuf, channel);
+					url_join_only (serv, tbuf, channel, key);
 					g_free (url);
 					return TRUE;
 				}
@@ -3839,7 +3861,7 @@ help (session *sess, char *tbuf, char *helpcmd, int quiet)
 int
 auto_insert (char *dest, int destlen, unsigned char *src, char *word[],
 				 char *word_eol[], char *a, char *c, char *d, char *e, char *h,
-				 char *n, char *s)
+				 char *n, char *s, char *u)
 {
 	int num;
 	char buf[32];
@@ -3936,6 +3958,8 @@ auto_insert (char *dest, int destlen, unsigned char *src, char *word[],
 					utf = ctime (&now);
 					utf[19] = 0;
 					break;
+				case 'u':
+					utf = u; break;
 				case 'v':
 					utf = PACKAGE_VERSION; break;
 					break;
@@ -4155,7 +4179,7 @@ user_command (session * sess, char *tbuf, char *cmd, char *word[],
 {
 	if (!auto_insert (tbuf, 2048, cmd, word, word_eol, "", sess->channel, "",
 							server_get_network (sess->server, TRUE), "",
-							sess->server->nick, ""))
+							sess->server->nick, "", ""))
 	{
 		PrintText (sess, _("Bad arguments for user command.\n"));
 		return;
@@ -4443,16 +4467,29 @@ handle_user_input (session *sess, char *text, int history, int nocommand)
 		return 1;
 	}
 
+#if 0 /* Who would remember all this? */
 	if (prefs.hex_input_command_char[0] == '/')
 	{
 		int i;
 		const char *unix_dirs [] = {
-			"/bin/", "/boot/", "/dev/",
-			"/etc/", "/home/", "/lib/",
-			"/lost+found/", "/mnt/", "/opt/",
-			"/proc/", "/root/", "/sbin/",
-			"/tmp/", "/usr/", "/var/",
-			"/gnome/", NULL};
+			"/bin/",
+			"/boot/",
+			"/dev/",
+			"/etc/",
+			"/home/",
+			"/lib/",
+			"/lost+found/",
+			"/mnt/",
+			"/opt/",
+			"/proc/",
+			"/root/",
+			"/sbin/",
+			"/tmp/",
+			"/usr/",
+			"/var/",
+			"/gnome/",
+			NULL
+		};
 		for (i = 0; unix_dirs[i] != NULL; i++)
 			if (strncmp (text, unix_dirs[i], strlen (unix_dirs[i]))==0)
 			{
@@ -4460,6 +4497,7 @@ handle_user_input (session *sess, char *text, int history, int nocommand)
 				return 1;
 			}
 	}
+#endif
 
 	return handle_command (sess, text + 1, TRUE);
 }

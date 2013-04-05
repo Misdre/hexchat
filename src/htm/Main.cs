@@ -1,4 +1,5 @@
-/* HexChat Theme Manager
+/**
+ * HexChat Theme Manager
  *
  * Copyright (C) 2012 Patrick Griffs
  * Copyright (C) 2012 Berke Viktor
@@ -281,7 +282,7 @@ namespace thememan
 
             try
             {
-                using (Package zip = Package.Open(zipFile.FullName, FileMode.Open))
+                using (Package zip = Package.Open(zipFile.FullName, FileMode.Open, FileAccess.Read))
                 {
                     PackagePartCollection parts = zip.GetParts();
 

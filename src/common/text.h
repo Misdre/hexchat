@@ -1,3 +1,22 @@
+/* HexChat
+ * Copyright (C) 1998-2010 Peter Zelezny.
+ * Copyright (C) 2009-2013 Berke Viktor.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
 #include "textenums.h"
 
 #ifndef HEXCHAT_TEXT_H
@@ -26,14 +45,9 @@ void pevent_save (char *fn);
 int pevt_build_string (const char *input, char **output, int *max_arg);
 int pevent_load (char *filename);
 void pevent_make_pntevts (void);
+int text_color_of (char *name);
 void text_emit (int index, session *sess, char *a, char *b, char *c, char *d);
 int text_emit_by_name (char *name, session *sess, char *a, char *b, char *c, char *d);
-#ifdef WIN32
-#if 0
-char *text_replace_non_bmp (char *utf8_input, int input_length, glong *output_length);
-#endif
-void text_replace_non_bmp2 (char *utf8_input);
-#endif
 char *text_validate (char **text, int *len);
 int get_stamp_str (char *fmt, time_t tim, char **ret);
 void format_event (session *sess, int index, char **args, char *o, int sizeofo, unsigned int stripcolor_args);

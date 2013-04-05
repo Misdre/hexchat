@@ -1,3 +1,22 @@
+/* HexChat
+ * Copyright (C) 1998-2010 Peter Zelezny.
+ * Copyright (C) 2009-2013 Berke Viktor.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
 #include "userlist.h"
 #include "dcc.h"
 
@@ -59,9 +78,8 @@ int fe_is_chanwindow (struct server *serv);
 void fe_add_chan_list (struct server *serv, char *chan, char *users,
 							  char *topic);
 void fe_chan_list_end (struct server *serv);
-int fe_is_banwindow (struct session *sess);
-void fe_add_ban_list (struct session *sess, char *mask, char *who, char *when, int is_exemption);
-void fe_ban_list_end (struct session *sess, int is_exemption);
+gboolean fe_add_ban_list (struct session *sess, char *mask, char *who, char *when, int rplcode);
+gboolean fe_ban_list_end (struct session *sess, int rplcode);
 void fe_notify_update (char *name);
 void fe_notify_ask (char *name, char *networks);
 void fe_text_clear (struct session *sess, int lines);

@@ -22,17 +22,9 @@
 
 #include "fe-gtk.h"
 
-#include <gtk/gtkmain.h>
-#include <gtk/gtkentry.h>
-#include <gtk/gtkprogressbar.h>
-#include <gtk/gtkbox.h>
-#include <gtk/gtklabel.h>
-#include <gtk/gtktogglebutton.h>
-#include <gtk/gtkmessagedialog.h>
-#include <gtk/gtkversion.h>
-
 #ifdef WIN32
 #include <gdk/gdkwin32.h>
+#include <windows.h>
 #else
 #include <unistd.h>
 #endif
@@ -62,15 +54,6 @@
 
 #ifdef USE_XLIB
 #include <gdk/gdkx.h>
-#include <gtk/gtkinvisible.h>
-#endif
-
-#ifdef USE_GTKSPELL
-#include <gtk/gtktextview.h>
-#endif
-
-#ifdef WIN32
-#include <windows.h>
 #endif
 
 GdkPixmap *channelwin_pix;
@@ -134,7 +117,7 @@ static const GOptionEntry gopt_entries[] =
  {"no-plugins",	'n', 0, G_OPTION_ARG_NONE,	&arg_skip_plugins, N_("Don't auto load any plugins"), NULL},
  {"plugindir",	'p', 0, G_OPTION_ARG_NONE,	&arg_show_autoload, N_("Show plugin/script auto-load directory"), NULL},
  {"configdir",	'u', 0, G_OPTION_ARG_NONE,	&arg_show_config, N_("Show user config directory"), NULL},
- {"url",	 0,  0, G_OPTION_ARG_STRING,	&arg_url, N_("Open an irc://server:port/channel URL"), "URL"},
+ {"url",	 0,  0, G_OPTION_ARG_STRING,	&arg_url, N_("Open an irc://server:port/channel?key URL"), "URL"},
 #ifndef WIN32	/* uses DBUS */
  {"command",	'c', 0, G_OPTION_ARG_STRING,	&arg_command, N_("Execute command:"), "COMMAND"},
  {"existing",	'e', 0, G_OPTION_ARG_NONE,	&arg_existing, N_("Open URL or execute command in an existing HexChat"), NULL},
@@ -149,7 +132,7 @@ create_msg_dialog (gchar *title, gchar *message)
 {
 	GtkWidget *dialog;
 
-	dialog = gtk_message_dialog_new (NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, message);
+	dialog = gtk_message_dialog_new (NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "%s", message);
 	gtk_window_set_title (GTK_WINDOW (dialog), title);
 
 /* On Win32 we automatically have the icon. If we try to load it explicitly, it will look ugly for some reason. */
@@ -280,6 +263,15 @@ fe_args (int argc, char *argv[])
 	gdk_window_set_events (gdk_get_default_root_window (), GDK_PROPERTY_CHANGE_MASK);
 	gdk_window_add_filter (gdk_get_default_root_window (), (GdkFilterFunc)root_event_cb, NULL);
 #endif
+
+#ifndef WIN32
+#ifndef __EMX__
+		/* OS/2 uses UID 0 all the time */
+		if (getuid () == 0)
+			fe_message (_("* Running IRC as root is stupid! You should\n"
+							"  create a User Account and use that to login.\n"), FE_MSG_WARN|FE_MSG_WAIT);
+#endif
+#endif /* !WIN32 */
 
 	return -1;
 }
@@ -602,14 +594,6 @@ fe_is_chanwindow (struct server *serv)
 	if (!serv->gui->chanlist_window)
 		return 0;
 	return 1;
-}
-
-int
-fe_is_banwindow (struct session *sess)
-{
-   if (!sess->res->banlist_window)
-     return 0;
-   return 1;
 }
 
 void

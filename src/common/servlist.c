@@ -27,8 +27,6 @@
 #endif
 
 #include "hexchat.h"
-#include <glib.h>
-
 #include "cfgfiles.h"
 #include "fe.h"
 #include "server.h"
@@ -496,6 +494,9 @@ static const struct defaultserver def[] =
 #endif
 	{0,			"irc.snoonet.org/6667"},
 
+	{"Snyde", 0},
+	{0,			"irc.snyde.net/6667"},
+
 	{"Sohbet.Net", 0},
 	{0,			"irc.sohbet.net"},
 
@@ -511,6 +512,12 @@ static const struct defaultserver def[] =
 	{0,			"us.spidernet.org"},
 	{0,			"eu.spidernet.org"},
 	{0,			"irc.spidernet.org"},*/
+	
+	{"SpotChat", 0},
+#ifdef USE_OPENSSL
+	{0,			"irc.spotchat.org/+6697"},
+#endif
+	{0,			"irc.spotchat.org/6667"},
 
 	{"StarChat", 0},
 	{0,			"irc.starchat.net"},
@@ -1047,7 +1054,19 @@ servlist_load (void)
 	char *tmp;
 	ircnet *net = NULL;
 
-	fp = hexchat_fopen_file ("servlist_.conf", "r", 0);
+	/* simple migration we will keep for a short while */
+	char *oldfile = g_build_filename (get_xdir (), "servlist_.conf", NULL);
+	char *newfile = g_build_filename (get_xdir (), "servlist.conf", NULL);
+
+	if (g_file_test (oldfile, G_FILE_TEST_EXISTS) && !g_file_test (newfile, G_FILE_TEST_EXISTS))
+	{
+		g_rename (oldfile, newfile);
+	}
+
+	g_free (oldfile);
+	g_free (newfile);
+
+	fp = hexchat_fopen_file ("servlist.conf", "r", 0);
 	if (!fp)
 		return FALSE;
 
@@ -1178,12 +1197,12 @@ servlist_save (void)
 #ifndef WIN32
 	int first = FALSE;
 
-	buf = g_strdup_printf ("%s/servlist_.conf", get_xdir ());
+	buf = g_strdup_printf ("%s/servlist.conf", get_xdir ());
 	if (g_access (buf, F_OK) != 0)
 		first = TRUE;
 #endif
 
-	fp = hexchat_fopen_file ("servlist_.conf", "w", 0);
+	fp = hexchat_fopen_file ("servlist.conf", "w", 0);
 	if (!fp)
 	{
 #ifndef WIN32

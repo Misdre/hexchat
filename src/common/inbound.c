@@ -137,7 +137,7 @@ static void
 inbound_make_idtext (server *serv, char *idtext, int max, int id)
 {
 	idtext[0] = 0;
-	if (serv->have_idmsg)
+	if (serv->have_idmsg || serv->have_accnotify)
 	{
 		if (id)
 		{
@@ -155,7 +155,9 @@ void
 inbound_privmsg (server *serv, char *from, char *ip, char *text, int id)
 {
 	session *sess;
+	struct User *user;
 	char idtext[64];
+	gboolean nodiag = FALSE;
 
 	sess = find_dialog (serv, from);
 
@@ -188,17 +190,24 @@ inbound_privmsg (server *serv, char *from, char *ip, char *text, int id)
 		return;
 	}
 
-	inbound_make_idtext (serv, idtext, sizeof (idtext), id);
-
 	sess = find_session_from_nick (from, serv);
 	if (!sess)
 	{
 		sess = serv->front_session;
-		EMIT_SIGNAL (XP_TE_PRIVMSG, sess, from, text, idtext, NULL, 0);
-		return;
+		nodiag = TRUE; /* We don't want it to look like a normal message in front sess */
 	}
 
-	if (sess->type == SESS_DIALOG)
+	user = userlist_find (sess, from);
+	if (user)
+	{
+		user->lasttalk = time (0);
+		if (user->account)
+			id = TRUE;
+	}
+	
+	inbound_make_idtext (serv, idtext, sizeof (idtext), id);
+
+	if (sess->type == SESS_DIALOG && !nodiag)
 		EMIT_SIGNAL (XP_TE_DPRIVMSG, sess, from, text, idtext, NULL, 0);
 	else
 		EMIT_SIGNAL (XP_TE_PRIVMSG, sess, from, text, idtext, NULL, 0);
@@ -375,6 +384,8 @@ inbound_action (session *sess, char *chan, char *from, char *ip, char *text, int
 	{
 		nickchar[0] = user->prefix[0];
 		user->lasttalk = time (0);
+		if (user->account)
+			id = TRUE;
 	}
 
 	inbound_make_idtext (serv, idtext, sizeof (idtext), id);
@@ -431,6 +442,8 @@ inbound_chanmsg (server *serv, session *sess, char *chan, char *from, char *text
 	user = userlist_find (sess, from);
 	if (user)
 	{
+		if (user->account)
+			id = TRUE;
 		nickchar[0] = user->prefix[0];
 		user->lasttalk = time (0);
 	}
@@ -650,12 +663,12 @@ inbound_nameslist (server *serv, char *chan, char *names)
 		case 0:
 			name[pos] = 0;
 			if (pos != 0)
-				userlist_add (sess, name, 0);
+				userlist_add (sess, name, 0, NULL, NULL);
 			return;
 		case ' ':
 			name[pos] = 0;
 			pos = 0;
-			userlist_add (sess, name, 0);
+			userlist_add (sess, name, 0, NULL, NULL);
 			break;
 		default:
 			name[pos] = *names;
@@ -700,13 +713,13 @@ inbound_topicnew (server *serv, char *nick, char *chan, char *topic)
 }
 
 void
-inbound_join (server *serv, char *chan, char *user, char *ip)
+inbound_join (server *serv, char *chan, char *user, char *ip, char *account, char *realname)
 {
 	session *sess = find_channel (serv, chan);
 	if (sess)
 	{
 		EMIT_SIGNAL (XP_TE_JOIN, sess, user, chan, ip, NULL, 0);
-		userlist_add (sess, user, ip);
+		userlist_add (sess, user, ip, account, realname);
 	}
 }
 
@@ -776,6 +789,22 @@ inbound_quit (server *serv, char *nick, char *ip, char *reason)
 	}
 
 	notify_set_offline (serv, nick, was_on_front_session);
+}
+
+void
+inbound_account (server *serv, char *nick, char *account)
+{
+	session *sess = NULL;
+	GSList *list;
+
+	list = sess_list;
+	while (list)
+	{
+		sess = list->data;
+		if (sess->server == serv)
+			userlist_set_account (sess, nick, account);
+		list = list->next;
+	}
 }
 
 void
@@ -867,7 +896,27 @@ inbound_notice (server *serv, char *to, char *nick, char *msg, char *ip, int id)
 	if (!sess)
 	{
 		ptr = 0;
-		if (prefs.hex_gui_tab_notices)
+		if (prefs.hex_irc_notice_pos == 0)
+		{
+											/* paranoia check */
+			if (msg[0] == '[' && (!serv->have_idmsg || id))
+			{
+				/* guess where chanserv meant to post this -sigh- */
+				if (!g_ascii_strcasecmp (nick, "ChanServ") && !find_dialog (serv, nick))
+				{
+					char *dest = strdup (msg + 1);
+					char *end = strchr (dest, ']');
+					if (end)
+					{
+						*end = 0;
+						sess = find_channel (serv, dest);
+					}
+					free (dest);
+				}
+			}
+			if (!sess)
+				sess = find_session_from_nick (nick, serv);
+		} else if (prefs.hex_irc_notice_pos == 1)
 		{
 			int stype = server_notice ? SESS_SNOTICES : SESS_NOTICES;
 			sess = find_session_from_type (stype, serv);
@@ -888,25 +937,9 @@ inbound_notice (server *serv, char *to, char *nick, char *msg, char *ip, int id)
 				msg += 14;
 		} else
 		{
-											/* paranoia check */
-			if (msg[0] == '[' && (!serv->have_idmsg || id))
-			{
-				/* guess where chanserv meant to post this -sigh- */
-				if (!g_ascii_strcasecmp (nick, "ChanServ") && !find_dialog (serv, nick))
-				{
-					char *dest = strdup (msg + 1);
-					char *end = strchr (dest, ']');
-					if (end)
-					{
-						*end = 0;
-						sess = find_channel (serv, dest);
-					}
-					free (dest);
-				}
-			}
-			if (!sess)
-				sess = find_session_from_nick (nick, serv);
+			sess = serv->front_session;
 		}
+
 		if (!sess)
 		{
 			if (server_notice)	
@@ -977,6 +1010,22 @@ inbound_away (server *serv, char *nick, char *msg)
 	}
 }
 
+void
+inbound_away_notify (server *serv, char *nick, char *reason)
+{
+	session *sess = NULL;
+	GSList *list;
+
+	list = sess_list;
+	while (list)
+	{
+		sess = list->data;
+		if (sess->server == serv)
+			userlist_set_away (sess, nick, reason ? TRUE : FALSE);
+		list = list->next;
+	}
+}
+
 int
 inbound_nameslist_end (server *serv, char *chan)
 {
@@ -1030,6 +1079,7 @@ check_autojoin_channels (server *serv)
 
 		free (serv->autojoin);
 		serv->autojoin = NULL;
+		i++;
 	}
 
 	/* this is really only for re-connects when you
@@ -1053,8 +1103,17 @@ check_autojoin_channels (server *serv)
 				if (po)
 					*po = 0;
 
-				channels = g_slist_append (channels, g_strdup (sess->waitchannel));
-				keys = g_slist_append (keys, g_strdup (sess->channelkey));
+				/* There can be no gap between keys, list keyed chans first. */
+				if (sess->channelkey[0] != 0)
+				{
+					channels = g_slist_prepend (channels, g_strdup (sess->waitchannel));
+					keys = g_slist_prepend (keys, g_strdup (sess->channelkey));
+				}
+				else
+				{
+					channels = g_slist_append (channels, g_strdup (sess->waitchannel));
+					keys = g_slist_append (keys, g_strdup (sess->channelkey));
+				}
 				i++;
 			}
 		}
@@ -1217,7 +1276,7 @@ inbound_user_info_start (session *sess, char *nick)
 void
 inbound_user_info (session *sess, char *chan, char *user, char *host,
 						 char *servname, char *nick, char *realname,
-						 unsigned int away)
+						 char *account, unsigned int away)
 {
 	server *serv = sess->server;
 	session *who_sess;
@@ -1234,7 +1293,7 @@ inbound_user_info (session *sess, char *chan, char *user, char *host,
 	{
 		who_sess = find_channel (serv, chan);
 		if (who_sess)
-			userlist_add_hostname (who_sess, nick, uhost, realname, servname, away);
+			userlist_add_hostname (who_sess, nick, uhost, realname, servname, account, away);
 		else
 		{
 			if (serv->doing_dns && nick && host)
@@ -1249,7 +1308,7 @@ inbound_user_info (session *sess, char *chan, char *user, char *host,
 			sess = list->data;
 			if (sess->type == SESS_CHANNEL && sess->server == serv)
 			{
-				userlist_add_hostname (sess, nick, uhost, realname, servname, away);
+				userlist_add_hostname (sess, nick, uhost, realname, servname, account, away);
 			}
 		}
 	}
@@ -1258,12 +1317,14 @@ inbound_user_info (session *sess, char *chan, char *user, char *host,
 }
 
 int
-inbound_banlist (session *sess, time_t stamp, char *chan, char *mask, char *banner, int is_exemption)
+inbound_banlist (session *sess, time_t stamp, char *chan, char *mask, char *banner, int rplcode)
 {
 	char *time_str = ctime (&stamp);
 	server *serv = sess->server;
+	char *nl;
 
-	time_str[19] = 0;	/* get rid of the \n */
+	if ((nl = strchr (time_str, '\n')))
+		*nl = 0;
 	if (stamp == 0)
 		time_str = "";
 
@@ -1274,18 +1335,17 @@ inbound_banlist (session *sess, time_t stamp, char *chan, char *mask, char *bann
 		goto nowindow;
 	}
 
-   if (!fe_is_banwindow (sess))
+	if (!fe_add_ban_list (sess, mask, banner, time_str, rplcode))
 	{
 nowindow:
 		/* let proto-irc.c do the 'goto def' for exemptions */
-		if (is_exemption)
+		if (rplcode != 367)	/* RPL_EXCEPTLIST */
 			return FALSE;
 
 		EMIT_SIGNAL (XP_TE_BANLIST, sess, chan, mask, banner, time_str, 0);
 		return TRUE;
 	}
 
-	fe_add_ban_list (sess, mask, banner, time_str, is_exemption);
 	return TRUE;
 }
 
@@ -1331,7 +1391,7 @@ inbound_login_end (session *sess, char *text)
 															  check_autojoin_channels, serv);
 		else
 			check_autojoin_channels (serv);
-		if (serv->supports_watch)
+		if (serv->supports_watch || serv->supports_monitor)
 			notify_send_watches (serv);
 		serv->end_of_motd = TRUE;
 	}

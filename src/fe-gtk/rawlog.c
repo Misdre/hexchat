@@ -29,11 +29,6 @@
 
 #include "fe-gtk.h"
 
-#include <gtk/gtkbutton.h>
-#include <gtk/gtkhbbox.h>
-#include <gtk/gtkhbox.h>
-#include <gtk/gtkvscrollbar.h>
-#include <gtk/gtkstock.h>
 #include <gdk/gdkkeysyms.h>
 
 #include "../common/hexchat.h"
@@ -86,7 +81,7 @@ rawlog_savebutton (GtkWidget * wid, server *serv)
 	return FALSE;
 }
 
-static void
+static gboolean
 rawlog_key_cb (GtkWidget * wid, GdkEventKey * key, gpointer userdata)
 {
 	/* Copy rawlog selection to clipboard when Ctrl+Shift+C is pressed,
@@ -99,13 +94,7 @@ rawlog_key_cb (GtkWidget * wid, GdkEventKey * key, gpointer userdata)
 	{
 		gtk_xtext_copy_selection (userdata);
 	}
-	/* close_rawlog is given to mg_create_generic_tab as
-	 * close_callback, it should take care of the rest.
-	 */
-	else if (key->keyval == GDK_Escape)
-	{
-		gtk_widget_destroy (wid);
-	}
+	return FALSE;
 }
 
 void
@@ -124,6 +113,7 @@ open_rawlog (struct server *serv)
 	serv->gui->rawlog_window =
 		mg_create_generic_tab ("RawLog", tbuf, FALSE, TRUE, close_rawlog, serv,
 							 640, 320, &vbox, serv);
+	gtkutil_destroy_on_esc (serv->gui->rawlog_window);
 
 	hbox = gtk_hbox_new (FALSE, 2);
 	gtk_container_add (GTK_CONTAINER (vbox), hbox);

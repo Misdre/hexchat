@@ -22,17 +22,6 @@
 
 #include "fe-gtk.h"
 
-#include <gtk/gtkdialog.h>
-#include <gtk/gtkstock.h>
-#include <gtk/gtkbox.h>
-#include <gtk/gtkhbbox.h>
-#include <gtk/gtkscrolledwindow.h>
-
-#include <gtk/gtkliststore.h>
-#include <gtk/gtktreeview.h>
-#include <gtk/gtktreeselection.h>
-#include <gtk/gtkcellrenderertext.h>
-
 #include "../common/hexchat.h"
 #define PLUGIN_C
 typedef struct session hexchat_context;
@@ -219,6 +208,7 @@ plugingui_open (void)
 	plugin_window = mg_create_generic_tab ("Addons", _(DISPLAY_NAME": Plugins and Scripts"),
 														 FALSE, TRUE, plugingui_close, NULL,
 														 500, 250, &vbox, 0);
+	gtkutil_destroy_on_esc (plugin_window);
 
 	view = plugingui_treeview_new (vbox);
 	g_object_set_data (G_OBJECT (plugin_window), "view", view);
